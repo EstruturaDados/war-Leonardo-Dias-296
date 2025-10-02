@@ -3,137 +3,256 @@
 #include <string.h>
 
 #define QTD_TERRITORIOS 5
-#define TAM_NOME 50
 #define TAM_COR 30
+#define NUM_MISSOES 5
 
-struct Territorio {
-    char nome[TAM_NOME];
-    char corExercito[TAM_COR];
-    int tropas;
+typedef struct {
+
+    char continente[20];
+    char cor[TAM_COR];
+    int dono;     // 0 = neutro, 1 = jogador
+    int tropas;   // quantidade de tropas
+} Territorio;
+
+typedef struct {
+    char descricao[100];
+    int concluida;
+} Missao;
+
+Territorio territorios[QTD_TERRITORIOS];
+
+Missao missoes[NUM_MISSOES] = {
+    {"Conquiste 2 territorios do Mapa", 0},
+    {"Conquiste o territorio 4", 0},
+    {"Ataque o territorio 1 e 3", 0},
+    {"Derrote pelo menos 2 tropas em cada territorio", 0},
+    {"Conquistar 4 territorios quaisquer", 0}
 };
 
-void limparBufferEntrada() {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
+int numAleatorio(int max) {
+    return rand() % max;
 }
 
-int rolarDado() {
-    return (rand() % 6) + 1; // gera número de 1 a 6
+void cadastrarTerritorios() {
+    printf("\n=== Cadastro dos Territorios ===\n");
+    for (int i = 0; i < QTD_TERRITORIOS; i++) {
+        printf("\nTerritorio %d:\n", i + 1);
+
+
+        printf("Continente: ");
+        scanf(" %[^\n]", territorios[i].continente);
+
+        printf("Cor: ");
+        scanf(" %[^\n]", territorios[i].cor);
+
+        printf("Quantidade de tropas: ");
+        scanf("%d", &territorios[i].tropas);
+
+        territorios[i].dono = 0; // comeca neutro
+    }
+}
+
+void mostrarMapa() {
+    printf("\n=== MAPA DE TERRITORIOS ===\n");
+    for (int i = 0; i < QTD_TERRITORIOS; i++) {
+        printf("%d - %s (%s) - Cor: %s - Tropas: %d - Dono: %s\n",
+               i, territorios[i].continente,
+               territorios[i].cor, territorios[i].tropas,
+               territorios[i].dono ? "Jogador" : "Neutro");
+    }
+    printf("===========================\n\n");
+}
+
+int contarTerritoriosConquistadosPorContinente(const char *continente) {
+    int total = 0;
+    for (int i = 0; i < QTD_TERRITORIOS; i++) {
+        if (territorios[i].dono == 1 && strcmp(territorios[i].continente, continente) == 0) {
+            total++;
+        }
+    }
+    return total;
+}
+
+int contarTerritoriosConquistados() {
+    int total = 0;
+    for (int i = 0; i < QTD_TERRITORIOS; i++) {
+        if (territorios[i].dono == 1) {
+            total++;
+        }
+    }
+    return total;
+}
+
+int verificarMissao(int indice) {
+    if (indice == 0) {
+        return contarTerritoriosConquistadosPorContinente("America do Sul") >= 2;
+    } else if (indice == 1) {
+        return contarTerritoriosConquistadosPorContinente("Europa") >= 2;
+    } else if (indice == 2) {
+        return contarTerritoriosConquistados() >= 3;
+    } else if (indice == 3) {
+        return contarTerritoriosConquistadosPorContinente("America do Sul") >= 1 &&
+               contarTerritoriosConquistadosPorContinente("America do Norte") >= 1 &&
+               contarTerritoriosConquistadosPorContinente("Europa") >= 1;
+    } else if (indice == 4) {
+        return contarTerritoriosConquistados() >= 4;
+    }
+    return 0;
+}
+
+void mostrarRankingFinal() {
+    int total = contarTerritoriosConquistados();
+    printf("\n===== RANKING FINAL =====\n");
+    printf("Voce conquistou %d territorios!\n", total);
+
+    if (total == 0) {
+        printf("Nenhuma conquista... precisa treinar mais!\n");
+    } else if (total < 3) {
+        printf("Conquistas modestas, mas ja e um comeco!\n");
+    } else if (total < QTD_TERRITORIOS) {
+        printf("Bom trabalho! Voce foi um comandante respeitavel!\n");
+    } else {
+        printf("Incrivel! Voce dominou todos os territorios!\n");
+    }
+
+    printf("\n--- Territorios conquistados ---\n");
+    for (int i = 0; i < QTD_TERRITORIOS; i++) {
+        if (territorios[i].dono == 1) {
+            printf("- %s (%s) com %d tropas\n",
+                   territorios[i].continente, territorios[i].tropas);
+        }
+    }
+    printf("==========================\n\n");
+}
+
+void jogarComMissao() {
+    int indiceMissao = numAleatorio(NUM_MISSOES);
+    printf("\nSua missao: %s\n", missoes[indiceMissao].descricao);
+
+    char continuar;
+
+    do {
+        int atq, def;
+        printf("\nDigite o territorio ATACANTE (0-%d): ", QTD_TERRITORIOS - 1);
+        scanf("%d", &atq);
+        printf("Digite o territorio DEFENSOR (0-%d): ", QTD_TERRITORIOS - 1);
+        scanf("%d", &def);
+
+        int dadoAtq = numAleatorio(6) + 1;
+        int dadoDef = numAleatorio(6) + 1;
+
+        printf("Resultado do dado: Atacante %d x %d Defensor\n", dadoAtq, dadoDef);
+
+        if (dadoAtq > dadoDef) {
+            printf("Vitoria! Voce conquistou %s!\n", territorios[def].continente);
+            territorios[def].dono = 1;
+            territorios[def].tropas = (territorios[atq].tropas > 1 ? territorios[atq].tropas - 1 : 1);
+        } else if (dadoAtq == dadoDef) {
+            printf("Empate! Nada muda.\n");
+        } else {
+            printf("Derrota! Voce perdeu tropas!\n");
+            if (territorios[atq].tropas > 0) territorios[atq].tropas--;
+        }
+
+        if (verificarMissao(indiceMissao)) {
+            printf("\n=== MISSAO CONCLUIDA! ===\n");
+            mostrarRankingFinal();
+            break;
+        }
+
+        printf("\nDeseja continuar atacando? (s/n): ");
+        scanf(" %c", &continuar);
+
+    } while (continuar == 's');
+
+    char jogarNovamente;
+    printf("\nDeseja jogar novamente (s) ou sair (n)? ");
+    scanf(" %c", &jogarNovamente);
+
+    if (jogarNovamente == 's') {
+        for (int i = 0; i < QTD_TERRITORIOS; i++) {
+            territorios[i].dono = 0;
+        }
+        cadastrarTerritorios();
+        jogarComMissao();
+    } else {
+        mostrarRankingFinal();
+        printf("\nObrigado por jogar!\n");
+        exit(0);
+    }
+}
+
+void jogarSemMissao() {
+    char continuar;
+    do {
+        int atq, def;
+        printf("\nDigite o territorio ATACANTE (0-%d): ", QTD_TERRITORIOS - 1);
+        scanf("%d", &atq);
+        printf("Digite o territorio DEFENSOR (0-%d): ", QTD_TERRITORIOS - 1);
+        scanf("%d", &def);
+
+        int dadoAtq = numAleatorio(6) + 1;
+        int dadoDef = numAleatorio(6) + 1;
+
+        printf("Resultado do dado: Atacante %d x %d Defensor\n", dadoAtq, dadoDef);
+
+        if (dadoAtq > dadoDef) {
+            printf("Vitoria! Voce conquistou %s!\n", territorios[def].continente);
+            territorios[def].dono = 1;
+            territorios[def].tropas = (territorios[atq].tropas > 1 ? territorios[atq].tropas - 1 : 1);
+        } else if (dadoAtq == dadoDef) {
+            printf("Empate! Nada muda.\n");
+        } else {
+            printf("Derrota! Voce perdeu tropas!\n");
+            if (territorios[atq].tropas > 0) territorios[atq].tropas--;
+        }
+
+        printf("\nDeseja continuar atacando? (s/n): ");
+        scanf(" %c", &continuar);
+
+    } while (continuar == 's');
+
+    mostrarRankingFinal();
 }
 
 int main() {
-    struct Territorio mapa[QTD_TERRITORIOS];
+    int opcao;
+    srand(1234);
 
-    printf("\n Bem vindo ao War! \n");
-    printf("##### Cadastre os seus Territorios #####\n\n");
-    printf("Clique na tecla ENTER para iniciar!\n");
-    getchar();
+    // Tela inicial
+    printf("\nBem-vindo ao WAR!\n");
+    printf("Clique ENTER para iniciar...\n");
+    getchar(); // espera ENTER
 
-    for (int i = 0; i < QTD_TERRITORIOS; i++) {
-        printf("Territorio %d:\n", i + 1);
+    cadastrarTerritorios();
 
-        printf("Digite o nome do territorio: ");
-        fgets(mapa[i].nome, TAM_NOME, stdin);
-        mapa[i].nome[strcspn(mapa[i].nome, "\n")] = '\0';
+    do {
+        printf("\n=== MENU PRINCIPAL ===\n");
+        printf("1 - Ver mapa\n");
+        printf("2 - Jogar com missao\n");
+        printf("3 - Jogar sem missao\n");
+        printf("4 - Sair\n");
+        printf("Escolha uma opcao: ");
+        scanf("%d", &opcao);
 
-        printf("Digite a cor deste territorio: ");
-        fgets(mapa[i].corExercito, TAM_COR, stdin);
-        mapa[i].corExercito[strcspn(mapa[i].corExercito, "\n")] = '\0';
-
-        printf("Digite o numero de tropas que terao: ");
-        scanf("%d", &mapa[i].tropas);
-        limparBufferEntrada();
-
-        printf("\n");
-    }
-
-    while (1) {
-        printf("\n##### Mapa Atual #####\n");
-        for (int i = 0; i < QTD_TERRITORIOS; i++) {
-            printf("Territorio %d\n", i + 1);
-            printf("Nome: %s\n", mapa[i].nome);
-            printf("Cor: %s\n", mapa[i].corExercito);
-            printf("Tropas: %d\n", mapa[i].tropas);
-            printf("***************************************\n");
+        switch (opcao) {
+            case 1:
+                mostrarMapa();
+                break;
+            case 2:
+                jogarComMissao();
+                break;
+            case 3:
+                jogarSemMissao();
+                break;
+            case 4:
+                printf("\nSaindo do jogo...\n");
+                mostrarRankingFinal();
+                break;
+            default:
+                printf("\nOpcao invalida!\n");
         }
-
-        // ===== ATAQUE =====
-        int atacante, defensor;
-        printf("\nEscolha o numero do territorio ATACANTE (0 para sair): ");
-        scanf("%d", &atacante);
-        limparBufferEntrada();
-
-        if (atacante == 0) {
-            printf("\nSaindo do jogo...\n");
-            break;
-        }
-
-        printf("Escolha o numero do territorio DEFENSOR: ");
-        scanf("%d", &defensor);
-        limparBufferEntrada();
-
-        atacante--; // índice
-        defensor--;
-
-        if (atacante < 0 || atacante >= QTD_TERRITORIOS ||
-            defensor < 0 || defensor >= QTD_TERRITORIOS ||
-            atacante == defensor) {
-            printf("Ataque invalido!\n");
-            continue;
-        }
-
-        if (mapa[atacante].tropas < 2) {
-            printf("O atacante precisa ter pelo menos 2 tropas para atacar!\n");
-            continue;
-        }
-
-        printf("\n===== ATAQUE =====\n");
-        printf("%s (%s, %d tropas) ataca %s (%s, %d tropas)\n",
-               mapa[atacante].nome, mapa[atacante].corExercito, mapa[atacante].tropas,
-               mapa[defensor].nome, mapa[defensor].corExercito, mapa[defensor].tropas);
-
-        // cada lado rola 1 dado
-        int dadoAtk = rolarDado();
-        int dadoDef = rolarDado();
-
-        printf("\nDado do atacante: %d\n", dadoAtk);
-        printf("Dado do defensor: %d\n", dadoDef);
-
-        if (dadoAtk > dadoDef) {
-            printf("Vitória do atacante! O defensor perde 1 tropa.\n");
-            mapa[defensor].tropas -= 1;
-        } else if (dadoDef > dadoAtk) {
-            printf("Vitória do defensor! O atacante perde 1 tropa.\n");
-            mapa[atacante].tropas -= 1;
-        } else {
-            printf("Empate! O atacante perde 1 tropa.\n");
-            mapa[atacante].tropas -= 1;
-        }
-
-        // verifica se defensor foi dominado
-        if (mapa[defensor].tropas <= 0) {
-            printf("\n*** TERRITORIO DOMINADO! ***\n");
-            printf("%s conquistou %s!\n", mapa[atacante].nome, mapa[defensor].nome);
-
-            mapa[defensor].tropas = 1; // move 1 tropa mínima
-            mapa[atacante].tropas -= 1;
-            strcpy(mapa[defensor].corExercito, mapa[atacante].corExercito);
-        }
-
-        // mostrar estado final da rodada
-        printf("\n===== Estado Atual =====\n");
-        printf("%s - Tropas: %d - Cor: %s\n", mapa[atacante].nome, mapa[atacante].tropas, mapa[atacante].corExercito);
-        printf("%s - Tropas: %d - Cor: %s\n", mapa[defensor].nome, mapa[defensor].tropas, mapa[defensor].corExercito);
-
-        // espera ação do jogador
-        printf("\nPressione ENTER para próxima jogada ou digite 0 e ENTER para sair: ");
-        char entrada[10];
-        fgets(entrada, sizeof(entrada), stdin);
-        if (entrada[0] == '0') {
-            printf("\nSaindo do jogo...\n");
-            break;
-        }
-    }
+    } while (opcao != 4);
 
     return 0;
 }
